@@ -79,38 +79,65 @@ uploadBtn.addEventListener("click", () => {
   uploadFile(selectedFile);
 });
 
-async function uploadFile(file){
-  const endpoint = '/.netlify/functions/upload'; // Netlify function
+function uploadFile(file){
+  const endpoint = '/.netlify/functions/upload'; // Netlify function path (adjust if different)
   const form = new FormData();
-  form.append('resume', file, file.name);
+  form.append('resume', file);
 
-  try {
-    // send to Netlify function
-    const resp = await fetch(endpoint, { method: 'POST', body: form });
-    if(!resp.ok){
-      const text = await resp.text();
-      serverResp.textContent = 'Upload failed: ' + resp.status + ' ' + text;
-      return;
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', endpoint, true);
+
+  xhr.upload.onprogress = function(e){
+    if(e.lengthComputable){
+      const pct = Math.round((e.loaded / e.total) * 100);
+      progressBar.style.width = pct + '%';
     }
-    const json = await resp.json();
-    // json.scores exists (dummy for now)
-    serverResp.textContent = 'Upload success — scoring done';
+  };
 
-    // Redirect to score page passing scores as query params
-    const s = json.scores || {};
-    const qs = new URLSearchParams({
-      overall: s.overall ?? '',
-      clarity: s.clarity ?? '',
-      relevance: s.relevance ?? '',
-      format: s.format ?? ''
-    }).toString();
+  xhr.onload = function(){
+    // Successful HTTP status
+    if(xhr.status >= 200 && xhr.status < 300){
+      let json;
+      try {
+        json = JSON.parse(xhr.responseText || '{}');
+      } catch (err) {
+        serverResp.textContent = 'Upload complete (invalid JSON response).';
+        return;
+      }
 
-    // go to score page
-    window.location.href = `score.html?${qs}`;
-  } catch(err){
-    serverResp.textContent = 'Network error: ' + err.message;
-  }
+      // If backend returns an error structure, show it
+      if(json.error){
+        serverResp.textContent = 'Server error: ' + (json.error.message || json.error);
+        return;
+      }
+
+      // Example response shape expected:
+      // { ok: true, text: '...', scores: { overall, clarity, relevance, format, suggestions } }
+
+      const result = {
+        text: json.text || json.textSnippet || '',
+        scores: json.scores || { overall: 0, clarity: 0, relevance: 0, format: 0, suggestions: '' }
+      };
+
+      // Save result to localStorage so score.html can read it
+      localStorage.setItem("resume-result", JSON.stringify(result));
+
+      // Redirect to score page (score.html) to display the results
+      window.location.href = "score.html";
+
+    } else {
+      // HTTP error (4xx, 5xx)
+      serverResp.textContent = 'Upload failed: ' + xhr.status + ' ' + (xhr.statusText || '');
+    }
+  };
+
+  xhr.onerror = function(){
+    serverResp.textContent = 'Network error';
+  };
+
+  xhr.send(form);
 }
+
 
 
 clearSelection();
