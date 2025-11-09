@@ -1,6 +1,6 @@
 /**
  * netlify/functions/upload.js
- * Install these in your project:
+ * requires:
  * npm install pdf-parse busboy node-fetch@2
  */
 
@@ -22,11 +22,10 @@ exports.handler = async function (event) {
   if (!contentType.startsWith("multipart/form-data")) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: "Expect multipart/form-data" }),
+      body: JSON.stringify({ error: "Expect multipart/form-data" })
     };
   }
 
-  // Convert Netlify body to buffer
   const body = Buffer.from(
     event.body,
     event.isBase64Encoded ? "base64" : "utf8"
@@ -52,78 +51,22 @@ exports.handler = async function (event) {
       if (!fileBuffer) {
         resolve({
           statusCode: 400,
-          body: JSON.stringify({ error: "No file received" }),
+          body: JSON.stringify({ error: "No file received" })
         });
         return;
       }
 
       try {
-        // Extract PDF text
         const data = await pdf(fileBuffer);
         const extracted = data?.text || "";
 
-        // If no API key, return dummy values
-        if (!process.env.GROQ_API_KEY) {
-          resolve({
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ok: true,
-              text: extracted.slice(0, 400),
-              scores: {
-                overall: 72,
-                clarity: 68,
-                relevance: 74,
-                format: 70,
-                suggestions: "LLM not enabled (no API key). Using dummy scores."
-              }
-            }),
-          });
-          return;
-        }
-
-        // Build LLM prompt
-        const prompt = `
-Score the resume from 0 to 100 in:
-- Overall quality
-- Skills match
-- Experience depth
-- Formatting
-
-Then write 3 suggestions.
-
-Resume:
-${extracted}
-        `;
-
-        // Call Groq LLM
-        const llmResponse = await fetch(
-          "https://api.groq.com/openai/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + process.env.GROQ_API_KEY,
-            },
-            body: JSON.stringify({
-              model: "llama3-8b-8192",
-              messages: [{ role: "user", content: prompt }],
-            }),
-          }
-        ).then((r) => r.json());
-
-        const resultText = llmResponse?.choices?.[0]?.message?.content || "";
-
-        const nums =
-          resultText.match(/\d+/g)?.map((n) => parseInt(n)) ||
-          [70, 70, 70, 70];
-
+        // Dummy scores (LLM disabled)
         const scores = {
-          overall: nums[0],
-          clarity: nums[1],
-          relevance: nums[2],
-          format: nums[3],
-          suggestions: resultText,
+          overall: 72,
+          clarity: 68,
+          relevance: 74,
+          format: 70,
+          suggestions: "LLM scoring disabled. Using dummy values."
         };
 
         resolve({
@@ -131,14 +74,15 @@ ${extracted}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ok: true,
-            scores,
             text: extracted.slice(0, 400),
-          }),
+            scores
+          })
         });
+
       } catch (err) {
         resolve({
           statusCode: 500,
-          body: JSON.stringify({ error: err.message }),
+          body: JSON.stringify({ error: err.message })
         });
       }
     });
