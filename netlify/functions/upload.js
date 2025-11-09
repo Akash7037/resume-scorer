@@ -64,17 +64,33 @@ exports.handler = async function (event) {
         };
 
         if (groqKey) {
-          const prompt = `
-You are ChatGPT, a senior HR expert specializing in technical recruiting. Given an IT/AI resume text as input, do the following:
-- Detected Target Role: Identify the most likely job role the candidate is targeting (e.g., Data Scientist, AI Engineer, Backend Developer).
-- Scores: Assign a numeric score (0-100) for each of these categories: Overall Quality, Clarity and Communication, Relevance to Intended Role, and Formatting and Structure. List each as a bullet point (e.g., "Overall Quality: 85/100").
-- Strengths: Provide bullet points of the resume's strong elements (e.g., relevant skills, quantified achievements, clear writing, good layout).
-- Weaknesses: Bullet points for weaknesses (e.g., missing skills, vague language, no metrics, bad formatting).
-- Suggestions: Bullet-point advice on improving the resume — missing tools, phrasing improvements, layout, and matching current AI/tech job trends (e.g., ML, cloud, open-source projects).
+         const prompt = `
+You are an automated HR-resume evaluator. Analyze the resume below and return results ONLY in this exact compact structure:
+
+Detected Role:
+- (One short line identifying the most likely job role)
+
+Scores:
+- Overall: X/100
+- Clarity: X/100
+- Relevance: X/100
+- Format: X/100
+
+Strengths (max 3, each 1 line):
+- ...
+
+Weaknesses (max 3, each 1 line):
+- ...
+
+Suggestions (max 3, each 1 line):
+- ...
+
+Do NOT write paragraphs. Do NOT explain anything more than asked. Keep everything short, sharp, and resume-friendly.
 
 Resume:
 ${extracted}
 `;
+
 
           const llm = await fetch(
             "https://api.groq.com/openai/v1/chat/completions",
