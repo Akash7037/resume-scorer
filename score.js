@@ -30,4 +30,3 @@ document.getElementById("circle").style.background =
   `conic-gradient(#00c853 ${overall * 3.6}deg, #eee 0deg)`;
 
 // Delete stored data once used
-localStorage.removeItem("resume-result");
