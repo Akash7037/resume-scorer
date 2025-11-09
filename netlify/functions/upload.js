@@ -85,7 +85,7 @@ ${extracted}
                 Authorization: "Bearer " + groqKey,
               },
               body: JSON.stringify({
-                model: "mixtral-8x7b-32768", // Groq's latest supported model
+                model: "llama-3.1-8b-instant", // Groq's latest supported model
                 messages: [{ role: "user", content: prompt }],
               }),
             }
