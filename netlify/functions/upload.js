@@ -1,6 +1,6 @@
 /**
  * netlify/functions/upload.js
- * requires:
+ * Requires:
  * npm install pdf-parse busboy node-fetch@2
  */
 
@@ -57,24 +57,70 @@ exports.handler = async function (event) {
       }
 
       try {
+        // STEP 1: Extract text from PDF
         const data = await pdf(fileBuffer);
-        const extracted = data?.text || "";
+        const extracted = data.text || "";
 
-        // Dummy scores (LLM disabled)
-        const scores = {
-          overall: 72,
-          clarity: 68,
-          relevance: 74,
-          format: 70,
-          suggestions: "LLM scoring disabled. Using dummy values."
+        // STEP 2: Call Groq API for scoring
+        const groqKey = process.env.GROQ_API_KEY;
+
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${groqKey}`
+          },
+          body: JSON.stringify({
+            model: "mixtral-8x7b-32768",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You score resumes. Provide numerical scores between 0 and 100 for clarity, relevance, and format. Also generate 3 improvements."
+              },
+              {
+                role: "user",
+                content: extracted
+              }
+            ]
+          })
+        });
+
+        const groqData = await groqRes.json();
+
+        let scores = {
+          clarity: 0,
+          relevance: 0,
+          format: 0,
+          suggestions: "No suggestions generated."
         };
 
+        try {
+          // Parse Groq response
+          const text = groqData.choices[0].message.content;
+
+          // Expected format: "Clarity: 80, Relevance: 75, Format: 65..."
+          const clarity = text.match(/clarity[:\- ]+(\d+)/i)?.[1];
+          const relevance = text.match(/relevance[:\- ]+(\d+)/i)?.[1];
+          const format = text.match(/format[:\- ]+(\d+)/i)?.[1];
+
+          scores = {
+            clarity: Number(clarity) || 0,
+            relevance: Number(relevance) || 0,
+            format: Number(format) || 0,
+            suggestions: text
+          };
+        } catch (e) {
+          console.log("Groq parse error:", e.message);
+        }
+
+        // STEP 3: Return results to frontend (score.html)
         resolve({
           statusCode: 200,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ok: true,
-            text: extracted.slice(0, 400),
+            text: extracted.slice(0, 600),
             scores
           })
         });
