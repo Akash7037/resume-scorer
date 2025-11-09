@@ -1,7 +1,5 @@
 /**
  * netlify/functions/upload.js
- * Requires:
- * npm install pdf-parse busboy node-fetch@2
  */
 
 const pdf = require("pdf-parse");
@@ -41,7 +39,7 @@ exports.handler = async function (event) {
 
     bb.on("file", (name, file, info) => {
       const chunks = [];
-      file.on("data", (data) => chunks.push(data));
+      file.on("data", (chunk) => chunks.push(chunk));
       file.on("end", () => {
         fileBuffer = Buffer.concat(chunks);
       });
@@ -57,74 +55,72 @@ exports.handler = async function (event) {
       }
 
       try {
-        // STEP 1: Extract text from PDF
-        const data = await pdf(fileBuffer);
-        const extracted = data.text || "";
+        const pdfData = await pdf(fileBuffer);
+        const extracted = pdfData?.text || "";
 
-        // STEP 2: Call Groq API for scoring
+        const prompt = `
+Score this resume from 0-100 in:
+- Overall quality
+- Clarity
+- Relevance
+- Formatting
+Then provide a short suggestion block.
+
+Resume:
+${extracted}
+        `;
+
         const groqKey = process.env.GROQ_API_KEY;
 
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${groqKey}`
-          },
-          body: JSON.stringify({
-            model: "mixtral-8x7b-32768",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You score resumes. Provide numerical scores between 0 and 100 for clarity, relevance, and format. Also generate 3 improvements."
-              },
-              {
-                role: "user",
-                content: extracted
-              }
-            ]
-          })
-        });
-
-        const groqData = await groqRes.json();
-
         let scores = {
-          clarity: 0,
-          relevance: 0,
-          format: 0,
-          suggestions: "No suggestions generated."
+          overall: 70,
+          clarity: 70,
+          relevance: 70,
+          format: 70,
+          suggestions: "LLM scoring disabled. Add API key in Netlify to enable."
         };
 
-        try {
-          // Parse Groq response
-          const text = groqData.choices[0].message.content;
+        if (groqKey) {
+          const llm = await fetch(
+            "https://api.groq.com/openai/v1/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + groqKey
+              },
+              body: JSON.stringify({
+                model: "llama3-8b-8192",
+                messages: [{ role: "user", content: prompt }]
+              })
+            }
+          ).then((r) => r.json());
 
-          // Expected format: "Clarity: 80, Relevance: 75, Format: 65..."
-          const clarity = text.match(/clarity[:\- ]+(\d+)/i)?.[1];
-          const relevance = text.match(/relevance[:\- ]+(\d+)/i)?.[1];
-          const format = text.match(/format[:\- ]+(\d+)/i)?.[1];
+          const output =
+            llm?.choices?.[0]?.message?.content || "";
+
+          const nums =
+            output.match(/\d+/g)?.map((n) => parseInt(n)) ||
+            [70, 70, 70, 70];
 
           scores = {
-            clarity: Number(clarity) || 0,
-            relevance: Number(relevance) || 0,
-            format: Number(format) || 0,
-            suggestions: text
+            overall: nums[0],
+            clarity: nums[1],
+            relevance: nums[2],
+            format: nums[3],
+            suggestions: output
           };
-        } catch (e) {
-          console.log("Groq parse error:", e.message);
         }
 
-        // STEP 3: Return results to frontend (score.html)
         resolve({
           statusCode: 200,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ok: true,
-            text: extracted.slice(0, 600),
-            scores
+            scores,
+            text: extracted.slice(0, 300)
           })
         });
-
       } catch (err) {
         resolve({
           statusCode: 500,
