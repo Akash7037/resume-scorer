@@ -59,6 +59,7 @@ exports.handler = async function (event) {
         const extracted = pdfData?.text || "";
 
         const prompt = `
+You are ChatGPT, a senior HR expert specializing in technical recruiting. Given an IT/AI resume text as input, do the following:\n- Detected Target Role: Identify the most likely job role the candidate is targeting (e.g., Data Scientist, AI Engineer, Backend Developer). Scores: Assign a numeric score (0-100) for each of these categories: Overall Quality, Clarity and Communication, Relevance to Intended Role, and Formatting and Structure. List each as a bullet point (for example: \"Overall Quality: 85/100\").\n- Strengths: Provide bullet points of the resume's clear strengths (e.g., relevant skills, quantified achievements, clear language, strong projects).\n- Weaknesses: Provide bullet points of any weaknesses or missing elements (e.g., missing key skills, passive language, lack of detail or metrics, formatting issues).\n- Suggestions: Provide bullet-point suggestions to improve the resume, including missing technical skills or tools to add, phrasing or layout improvements, and alignment with current AI/IT industry trends (e.g., AI/ML, cloud technologies, data science). Use a strict, professional tone as an automated HR screener.\nOutput the results under the headings: Detected Target Role, Scores, Strengths, Weaknesses, Suggestions. No additional commentary outside these sections.
 Score this resume from 0-100 in:
 - Overall quality
 - Clarity
@@ -90,7 +91,7 @@ ${extracted}
                 Authorization: "Bearer " + groqKey
               },
               body: JSON.stringify({
-                model: "llama3-8b-8192",
+                model: "llama-3.1-8b-instant",
                 messages: [{ role: "user", content: prompt }]
               })
             }
