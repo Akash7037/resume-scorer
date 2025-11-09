@@ -1,7 +1,3 @@
-/**
- * netlify/functions/upload.js
- */
-
 const pdf = require("pdf-parse");
 const Busboy = require("busboy");
 const fetch = require("node-fetch");
@@ -13,14 +9,12 @@ exports.handler = async function (event) {
   }
 
   const contentType =
-    event.headers["content-type"] ||
-    event.headers["Content-Type"] ||
-    "";
+    event.headers["content-type"] || event.headers["Content-Type"] || "";
 
   if (!contentType.startsWith("multipart/form-data")) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: "Expect multipart/form-data" })
+      body: JSON.stringify({ error: "Expect multipart/form-data" }),
     };
   }
 
@@ -49,7 +43,7 @@ exports.handler = async function (event) {
       if (!fileBuffer) {
         resolve({
           statusCode: 400,
-          body: JSON.stringify({ error: "No file received" })
+          body: JSON.stringify({ error: "No file received" }),
         });
         return;
       }
@@ -58,58 +52,56 @@ exports.handler = async function (event) {
         const pdfData = await pdf(fileBuffer);
         const extracted = pdfData?.text || "";
 
-        const prompt = `
-You are ChatGPT, a senior HR expert specializing in technical recruiting. Given an IT/AI resume text as input, do the following:\n- Detected Target Role: Identify the most likely job role the candidate is targeting (e.g., Data Scientist, AI Engineer, Backend Developer). Scores: Assign a numeric score (0-100) for each of these categories: Overall Quality, Clarity and Communication, Relevance to Intended Role, and Formatting and Structure. List each as a bullet point (for example: \"Overall Quality: 85/100\").\n- Strengths: Provide bullet points of the resume's clear strengths (e.g., relevant skills, quantified achievements, clear language, strong projects).\n- Weaknesses: Provide bullet points of any weaknesses or missing elements (e.g., missing key skills, passive language, lack of detail or metrics, formatting issues).\n- Suggestions: Provide bullet-point suggestions to improve the resume, including missing technical skills or tools to add, phrasing or layout improvements, and alignment with current AI/IT industry trends (e.g., AI/ML, cloud technologies, data science). Use a strict, professional tone as an automated HR screener.\nOutput the results under the headings: Detected Target Role, Scores, Strengths, Weaknesses, Suggestions. No additional commentary outside these sections.
-Score this resume from 0-100 in:
-- Overall quality
-- Clarity
-- Relevance
-- Formatting
-Then provide a short suggestion block.
-
-Resume:
-${extracted}
-        `;
-
         const groqKey = process.env.GROQ_API_KEY;
 
+        // Default fallback scores
         let scores = {
           overall: 70,
           clarity: 70,
           relevance: 70,
           format: 70,
-          suggestions: "LLM scoring disabled. Add API key in Netlify to enable."
+          suggestions: "LLM scoring disabled. Add GROQ_API_KEY in Netlify to enable full scoring.",
         };
 
         if (groqKey) {
+          const prompt = `
+You are ChatGPT, a senior HR expert specializing in technical recruiting. Given an IT/AI resume text as input, do the following:
+- Detected Target Role: Identify the most likely job role the candidate is targeting (e.g., Data Scientist, AI Engineer, Backend Developer).
+- Scores: Assign a numeric score (0-100) for each of these categories: Overall Quality, Clarity and Communication, Relevance to Intended Role, and Formatting and Structure. List each as a bullet point (e.g., "Overall Quality: 85/100").
+- Strengths: Provide bullet points of the resume's strong elements (e.g., relevant skills, quantified achievements, clear writing, good layout).
+- Weaknesses: Bullet points for weaknesses (e.g., missing skills, vague language, no metrics, bad formatting).
+- Suggestions: Bullet-point advice on improving the resume — missing tools, phrasing improvements, layout, and matching current AI/tech job trends (e.g., ML, cloud, open-source projects).
+
+Resume:
+${extracted}
+`;
+
           const llm = await fetch(
             "https://api.groq.com/openai/v1/chat/completions",
             {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: "Bearer " + groqKey
+                Authorization: "Bearer " + groqKey,
               },
               body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                messages: [{ role: "user", content: prompt }]
-              })
+                model: "mixtral-8x7b-32768", // Groq's latest supported model
+                messages: [{ role: "user", content: prompt }],
+              }),
             }
           ).then((r) => r.json());
 
-          const output =
-            llm?.choices?.[0]?.message?.content || "";
+          const output = llm?.choices?.[0]?.message?.content || "";
 
           const nums =
-            output.match(/\d+/g)?.map((n) => parseInt(n)) ||
-            [70, 70, 70, 70];
+            output.match(/\d+/g)?.map((n) => parseInt(n)) || [70, 70, 70, 70];
 
           scores = {
             overall: nums[0],
             clarity: nums[1],
             relevance: nums[2],
             format: nums[3],
-            suggestions: output
+            suggestions: output,
           };
         }
 
@@ -119,13 +111,13 @@ ${extracted}
           body: JSON.stringify({
             ok: true,
             scores,
-            text: extracted.slice(0, 300)
-          })
+            text: extracted.slice(0, 300),
+          }),
         });
       } catch (err) {
         resolve({
           statusCode: 500,
-          body: JSON.stringify({ error: err.message })
+          body: JSON.stringify({ error: err.message }),
         });
       }
     });
