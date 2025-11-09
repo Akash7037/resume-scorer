@@ -1,51 +1,35 @@
-
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Resume Scorer — Result</title>
-  <link rel="stylesheet" href="styles-score.css">
+  <meta charset="utf-8">
+  <title>Resume Scorer — Results</title>
+  <link rel="stylesheet" href="score.css">
 </head>
 <body>
-  <main class="wrap">
-    <header>
-      <h1>Resume Scorer — Results</h1>
-      <p class="muted">This page shows a dummy score now. Final scoring will use LLM models.</p>
-    </header>
 
-    <section class="score-card">
-      <div class="score-visual" aria-hidden>
-        <svg viewBox="0 0 120 120" class="meter">
-          <circle cx="60" cy="60" r="50" class="bg" />
-          <circle cx="60" cy="60" r="50" class="fg" id="meterFg" />
-        </svg>
-        <div class="score-text">
-          <div id="scorePercent">--%</div>
-          <div class="caption">Test — under development</div>
-        </div>
-      </div>
+  <div class="card">
+    <h1>Resume Scorer — Results</h1>
+    <p class="sub">This page shows results returned from backend.</p>
 
-      <div class="details">
-        <h2>Summary</h2>
-        <p id="summary">Model scoring is under development. Below are dummy metrics for now.</p>
+    <div id="circle">
+      <div id="percent">--%</div>
+    </div>
 
-        <ul class="metrics">
-          <li><strong>Clarity:</strong> <span id="m1">--%</span></li>
-          <li><strong>Relevance:</strong> <span id="m2">--%</span></li>
-          <li><strong>Format:</strong> <span id="m3">--%</span></li>
-        </ul>
+    <h2>Summary</h2>
+    <p id="summary">Waiting for backend result...</p>
 
-        <div class="actions">
-          <a href="index.html" class="btn">Upload another resume</a>
-          <button id="regenerate" class="btn secondary">Regenerate (dummy)</button>
-        </div>
-      </div>
-    </section>
+    <div class="metrics">
+      <p>Clarity: <span id="clarity">--%</span></p>
+      <p>Relevance: <span id="relevance">--%</span></p>
+      <p>Format: <span id="format">--%</span></p>
+    </div>
 
-    <footer class="foot">Powered by Resume Scorer — LLM scoring coming soon</footer>
-  </main>
+    <h3>Suggestions</h3>
+    <p id="suggestions">Loading...</p>
 
-  <script src="score-script.js"></script>
+    <button onclick="window.location.href='index.html'">Upload another resume</button>
+  </div>
+
+  <script src="score.js"></script>
 </body>
 </html>
