@@ -3,31 +3,40 @@
 <head>
   <meta charset="utf-8">
   <title>Resume Scorer — Results</title>
-  <link rel="stylesheet" href="score.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
 
-  <div class="card">
+  <div class="card" style="max-width: 500px;">
+
     <h1>Resume Scorer — Results</h1>
-    <p class="sub">This page shows results returned from backend.</p>
+    <p>This page shows results returned from backend.</p>
 
-    <div id="circle">
-      <div id="percent">--%</div>
+    <div class="score-section">
+
+      <div id="circle" class="circle">
+        <span id="percent">--%</span>
+      </div>
+
+      <h2>Summary</h2>
+      <p id="summary">Waiting for backend result...</p>
+
+      <h3>Clarity: <span id="clarity">--%</span></h3>
+      <h3>Relevance: <span id="relevance">--%</span></h3>
+      <h3>Format: <span id="format">--%</span></h3>
+
+      <h2>Suggestions</h2>
+      <p id="suggestions">Loading...</p>
+
+      <br>
+      <a href="index.html">
+        <button>Upload another resume</button>
+      </a>
     </div>
 
-    <h2>Summary</h2>
-    <p id="summary">Waiting for backend result...</p>
-
-    <div class="metrics">
-      <p>Clarity: <span id="clarity">--%</span></p>
-      <p>Relevance: <span id="relevance">--%</span></p>
-      <p>Format: <span id="format">--%</span></p>
-    </div>
-
-    <h3>Suggestions</h3>
-    <p id="suggestions">Loading...</p>
-
-    <button onclick="window.location.href='index.html'">Upload another resume</button>
   </div>
 
   <script src="score.js"></script>
