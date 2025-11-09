@@ -1,132 +1,148 @@
-// netlify/functions/upload.js
-// Requires: npm install pdf-parse busboy node-fetch
-// Netlify will pack dependencies from package.json at deploy time.
+/**
+ * netlify/functions/upload.js
+ * Install these in your project:
+ * npm install pdf-parse busboy node-fetch@2
+ */
 
-const pdf = require('pdf-parse');
-const Busboy = require('busboy'); // to parse multipart/form-data
-const fetch = require('node-fetch'); // if you later call external LLM APIs
+const pdf = require("pdf-parse");
+const Busboy = require("busboy");
+const fetch = require("node-fetch");
+const stream = require("stream");
 
-exports.handler = async function(event, context) {
-  // Only accept POST
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+exports.handler = async function (event) {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  // Parse multipart form data to get the file buffer
-  const headers = event.headers || {};
-  const contentType = headers['content-type'] || headers['Content-Type'] || '';
-  if (!contentType.startsWith('multipart/form-data')) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Expect multipart/form-data' }) };
+  const contentType =
+    event.headers["content-type"] ||
+    event.headers["Content-Type"] ||
+    "";
+
+  if (!contentType.startsWith("multipart/form-data")) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Expect multipart/form-data" }),
+    };
   }
 
-  // Busboy expects a raw Node req stream; Netlify gives body as base64
-  const bb = new Busboy({ headers: { 'content-type': contentType }});
-  const bufferChunks = [];
+  // Convert Netlify body to buffer
+  const body = Buffer.from(
+    event.body,
+    event.isBase64Encoded ? "base64" : "utf8"
+  );
 
-  const body = Buffer.from(event.body, event.isBase64Encoded ? 'base64' : 'utf8');
+  const pass = new stream.PassThrough();
+  pass.end(body);
 
-  // emulate a stream to Busboy
-  const stream = require('stream');
-  const s = new stream.PassThrough();
-  s.end(body);
   return await new Promise((resolve) => {
-    let fileBuffer = null;
-    let filename = 'resume.pdf';
+    const bb = Busboy({ headers: { "content-type": contentType } });
 
-    bb.on('file', (name, file, info) => {
+    let fileBuffer = null;
+
+    bb.on("file", (name, file, info) => {
       const chunks = [];
-      file.on('data', (data) => chunks.push(data));
-      file.on('end', () => {
+      file.on("data", (data) => chunks.push(data));
+      file.on("end", () => {
         fileBuffer = Buffer.concat(chunks);
       });
     });
 
-    bb.on('field', (name, val) => {
-      // no-op: you can read extra fields here
-    });
-
-    bb.on('finish', async () => {
+    bb.on("finish", async () => {
       if (!fileBuffer) {
-        resolve({ statusCode: 400, body: JSON.stringify({ error: 'No file' })});
+        resolve({
+          statusCode: 400,
+          body: JSON.stringify({ error: "No file received" }),
+        });
         return;
       }
 
       try {
-        // Extract text from PDF
+        // Extract PDF text
         const data = await pdf(fileBuffer);
-        const text = (data && data.text) ? data.text : '';
+        const extracted = data?.text || "";
 
-        // === HERE: Call your LLM / scoring logic ===
-        // For now we will return DUMMY scores. Later replace with an API call.
-        // Example: call Hugging Face Inference API using process.env.HF_API_KEY
-        //
-        // const resp = await fetch('https://api-inference.huggingface.co/models/your-model', {...})
+        // If no API key, return dummy values
+        if (!process.env.GROQ_API_KEY) {
+          resolve({
+            statusCode: 200,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ok: true,
+              text: extracted.slice(0, 400),
+              scores: {
+                overall: 72,
+                clarity: 68,
+                relevance: 74,
+                format: 70,
+                suggestions: "LLM not enabled (no API key). Using dummy scores."
+              }
+            }),
+          });
+          return;
+        }
 
-        // Dummy scoring logic (replace with real model later)
-       // Call Groq LLM to score resume
-const prompt = `
-You are a resume scoring expert. 
-
-Score the resume on the following from 0 to 100:
+        // Build LLM prompt
+        const prompt = `
+Score the resume from 0 to 100 in:
 - Overall quality
 - Skills match
-- Experience strength
+- Experience depth
 - Formatting
 
-Then give 3 improvement suggestions.
+Then write 3 suggestions.
 
-Resume text:
+Resume:
 ${extracted}
-`;
+        `;
 
-const llmResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer " + process.env.GROQ_API_KEY
-  },
-  body: JSON.stringify({
-    model: "llama3-8b-8192",
-    messages: [
-      { role: "user", content: prompt }
-    ]
-  })
-}).then(r => r.json());
+        // Call Groq LLM
+        const llmResponse = await fetch(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + process.env.GROQ_API_KEY,
+            },
+            body: JSON.stringify({
+              model: "llama3-8b-8192",
+              messages: [{ role: "user", content: prompt }],
+            }),
+          }
+        ).then((r) => r.json());
 
-// Parse response text
-const resultText = llmResponse.choices[0].message.content;
+        const resultText = llmResponse?.choices?.[0]?.message?.content || "";
 
-// Extract numeric scores using simple regex
-const numbers = resultText.match(/\d+/g)?.map(n => parseInt(n)) || [70, 70, 70, 70];
+        const nums =
+          resultText.match(/\d+/g)?.map((n) => parseInt(n)) ||
+          [70, 70, 70, 70];
 
-const scores = {
-  overall: numbers[0],
-  clarity: numbers[1],
-  relevance: numbers[2],
-  format: numbers[3],
-  suggestions: resultText
-};
+        const scores = {
+          overall: nums[0],
+          clarity: nums[1],
+          relevance: nums[2],
+          format: nums[3],
+          suggestions: resultText,
+        };
 
-        // Return JSON with extracted text (optionally) and scores.
         resolve({
           statusCode: 200,
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ok: true,
-            filename,
-            textSnippet: text.slice(0, 1000), // keep small for now
-            scores: { overall, clarity, relevance, format },
-            message: 'Dummy scoring (replace with LLM call)'
+            scores,
+            text: extracted.slice(0, 400),
           }),
-          headers: { 'Content-Type': 'application/json' }
         });
       } catch (err) {
         resolve({
           statusCode: 500,
-          body: JSON.stringify({ error: err.message })
+          body: JSON.stringify({ error: err.message }),
         });
       }
     });
 
-    s.pipe(bb);
+    pass.pipe(bb);
   });
 };
