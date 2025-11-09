@@ -1,0 +1,61 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.card {
+  background: #fff;
+  width: 350px;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  text-align: center;
+}
+
+button {
+  padding: 10px 20px;
+  margin-top: 15px;
+  background-color: #00c853;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+button:hover {
+  background-color: #009e40;
+}
+
+/* Score circle */
+.circle {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: conic-gradient(#eee 0deg, #eee 360deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px auto;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.score-section {
+  text-align: center;
+}
+
+#suggestions {
+  padding: 12px;
+  border-radius: 10px;
+  background: #fafafa;
+  border: 1px solid #ddd;
+  margin-top: 10px;
+  text-align: left;
+}
