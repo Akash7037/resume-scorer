@@ -1,54 +1,45 @@
-/*
-  score.js
-  Loads stored resume scoring result from localStorage
-  and updates the score.html UI safely
-*/
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Resume Scorer — Results</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-// Read data saved from upload step
-const raw = localStorage.getItem("resume-result");
-let data = null;
+  <!-- Make sure styles.css is in the root folder -->
+  <link rel="stylesheet" href="styles-score.css">
+</head>
 
-try {
-  data = JSON.parse(raw);
-} catch (e) {
-  data = null;
-}
+<body>
 
-// If no data found, show placeholders
-if (!data || !data.scores) {
-  document.getElementById("percent").innerText = "--%";
-  document.getElementById("clarity").innerText = "--%";
-  document.getElementById("relevance").innerText = "--%";
-  document.getElementById("format").innerText = "--%";
-  document.getElementById("summary").innerText =
-    "No backend data found. Please upload a resume first.";
-  document.getElementById("suggestions").innerText =
-    "No suggestions available.";
-  document.getElementById("circle").style.background =
-    "conic-gradient(#ccc 0deg, #eee 0deg)";
-  throw new Error("No resume-result in localStorage");
-}
+  <div class="card" role="main" style="max-width: 600px; margin: auto;">
 
-// Extract scores
-const scores = data.scores;
-const overall = scores.overall || 0;
-const clarity = scores.clarity || 0;
-const relevance = scores.relevance || 0;
-const format = scores.format || 0;
-const suggestions = scores.suggestions || "No suggestions provided.";
+    <h1>Resume Scorer — Results</h1>
+    <p>This page shows results returned from backend.</p>
 
-// Update UI
-document.getElementById("percent").innerText = overall + "%";
-document.getElementById("clarity").innerText = clarity + "%";
-document.getElementById("relevance").innerText = relevance + "%";
-document.getElementById("format").innerText = format + "%";
+    <div class="score-section">
 
-document.getElementById("summary").innerText =
-  data.text || "No summary extracted.";
+      <!-- Score Circle -->
+      <div id="circle" class="circle">
+        <span id="percent">--%</span>
+      </div>
 
-document.getElementById("suggestions").innerText = suggestions;
+      <h2>Summary</h2>
+      <p id="summary">Waiting for backend result...</p>
 
-// Circle progress animation
-document.getElementById("circle").style.background = `
-  conic-gradient(#00c853 ${overall * 3.6}deg, #eee 0deg)
-`;
+      <h3>Clarity: <span id="clarity">--%</span></h3>
+      <h3>Relevance: <span id="relevance">--%</span></h3>
+      <h3>Format: <span id="format">--%</span></h3>
+
+      <h2>Suggestions</h2>
+      <p id="suggestions">Loading...</p>
+
+      <br>
+      <a href="index.html" class="btn">Upload another resume</a>
+
+    </div>
+
+  </div>
+
+  <script src="score.js"></script>
+</body>
+</html>
