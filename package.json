@@ -1,0 +1,9 @@
+{
+  "name": "resume-scorer-netlify",
+  "version": "1.0.0",
+  "dependencies": {
+    "pdf-parse": "^1.1.1",
+    "busboy": "^1.6.0",
+    "node-fetch": "^2.6.7"
+  }
+}

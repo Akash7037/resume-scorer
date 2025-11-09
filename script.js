@@ -79,34 +79,38 @@ uploadBtn.addEventListener("click", () => {
   uploadFile(selectedFile);
 });
 
-function uploadFile(file) {
-  const endpoint = "/upload";
+async function uploadFile(file){
+  const endpoint = '/.netlify/functions/upload'; // Netlify function
   const form = new FormData();
-  form.append("resume", file);
+  form.append('resume', file, file.name);
 
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", endpoint, true);
-
-  xhr.upload.onprogress = function (e) {
-    if (e.lengthComputable) {
-      const pct = (e.loaded / e.total) * 100;
-      progressBar.style.width = pct + "%";
+  try {
+    // send to Netlify function
+    const resp = await fetch(endpoint, { method: 'POST', body: form });
+    if(!resp.ok){
+      const text = await resp.text();
+      serverResp.textContent = 'Upload failed: ' + resp.status + ' ' + text;
+      return;
     }
-  };
+    const json = await resp.json();
+    // json.scores exists (dummy for now)
+    serverResp.textContent = 'Upload success — scoring done';
 
-  xhr.onload = function () {
-    if (xhr.status >= 200 && xhr.status < 300) {
-      serverResp.textContent = "Uploaded successfully";
-    } else {
-      serverResp.textContent = "Upload failed: " + xhr.status;
-    }
-  };
+    // Redirect to score page passing scores as query params
+    const s = json.scores || {};
+    const qs = new URLSearchParams({
+      overall: s.overall ?? '',
+      clarity: s.clarity ?? '',
+      relevance: s.relevance ?? '',
+      format: s.format ?? ''
+    }).toString();
 
-  xhr.onerror = function () {
-    serverResp.textContent = "Network error";
-  };
-
-  xhr.send(form);
+    // go to score page
+    window.location.href = `score.html?${qs}`;
+  } catch(err){
+    serverResp.textContent = 'Network error: ' + err.message;
+  }
 }
+
 
 clearSelection();
