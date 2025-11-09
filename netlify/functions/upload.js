@@ -63,10 +63,49 @@ exports.handler = async function(event, context) {
         // const resp = await fetch('https://api-inference.huggingface.co/models/your-model', {...})
 
         // Dummy scoring logic (replace with real model later)
-        const overall = 72;
-        const clarity = 78;
-        const relevance = 68;
-        const format = 70;
+       // Call Groq LLM to score resume
+const prompt = `
+You are a resume scoring expert. 
+
+Score the resume on the following from 0 to 100:
+- Overall quality
+- Skills match
+- Experience strength
+- Formatting
+
+Then give 3 improvement suggestions.
+
+Resume text:
+${extracted}
+`;
+
+const llmResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + process.env.GROQ_API_KEY
+  },
+  body: JSON.stringify({
+    model: "llama3-8b-8192",
+    messages: [
+      { role: "user", content: prompt }
+    ]
+  })
+}).then(r => r.json());
+
+// Parse response text
+const resultText = llmResponse.choices[0].message.content;
+
+// Extract numeric scores using simple regex
+const numbers = resultText.match(/\d+/g)?.map(n => parseInt(n)) || [70, 70, 70, 70];
+
+const scores = {
+  overall: numbers[0],
+  clarity: numbers[1],
+  relevance: numbers[2],
+  format: numbers[3],
+  suggestions: resultText
+};
 
         // Return JSON with extracted text (optionally) and scores.
         resolve({
